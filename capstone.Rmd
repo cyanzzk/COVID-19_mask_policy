@@ -1,0 +1,54 @@
+---
+title: "Capstone Memo"
+output: html_notebook
+author: Zikang Zheng
+date: 2020-7-29
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+library(lubridate)
+setwd('~/R/capstone')
+```
+
+```{r}
+covid <- read_csv('covid.csv')
+policy <- read_csv('policy.csv')
+
+state_shp <- st_read('~/R/capstone/shapefiles/county/cb_2018_us_county_500k.shp') %>% 
+  mutate(STATEFP=as.numeric(STATEFP)) %>% 
+  filter(STATEFP <60 & STATEFP != 02 & STATEFP != 15)
+
+state_shp <- left_join(state_shp,policy,by=c('STATEFP'='state_fips'))
+
+state_shp_clean <- state_shp %>% 
+  mutate(mask_policy_start=mdy(mask_policy_start)) %>% 
+  mutate(Days=mask_policy_start-mdy('04-08-2020'))
+```
+```{r}
+state_shp_clean %>% 
+  ggplot()+
+  geom_sf(aes(fill=Days),lwd=0.1)+
+  coord_sf(ylim=c(24,53),xlim=c(-125,-68))+
+  theme_minimal()+
+  labs(fill='Days after April 8th')+
+  scale_fill_distiller(palette = 'Spectral',na.value = 'red')+
+  labs()
+```
+
+```{r}
+covid <- covid %>% 
+  mutate(date=ymd(date))
+
+states_total <- covid %>% 
+  group_by(date,state) %>% 
+  summarise(total_cases=sum(cases))
+
+states_total %>% 
+  ggplot()+
+  geom_line(aes(x=date,y=total_cases,color=state))+
+  theme_bw()
+```
+
+
